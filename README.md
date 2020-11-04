@@ -1,3 +1,7 @@
-# CppProjectTemplate
-[![Build status](https://ci.appveyor.com/api/projects/status/nhcvpsefxeqx2atj?svg=true)](https://ci.appveyor.com/project/xtozero/cppprojecttemplate)
+# Ray Tracing in One Weekend In Cuda
+A Cuda implementation of Peter Shirley's [_Ray Tracing in One Weekend_](https://raytracing.github.io/books/RayTracingInOneWeekend.html) book
+
+![](./ResultImg/image_final.png)
+
+
 
