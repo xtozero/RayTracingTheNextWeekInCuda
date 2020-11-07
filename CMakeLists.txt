@@ -1,12 +1,7 @@
-cmake_minimum_required(VERSION 3.16)
+cmake_minimum_required(VERSION 3.12)
 
-project(CppProjectTemplate)
+project(RayTracinginOneWeekendInCuda LANGUAGES CXX CUDA)
 
 set(CMAKE_CXX_STANDARD 17)
 
-set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
-
-add_subdirectory(SampleProject)
-add_subdirectory(UnitTest)
-add_subdirectory(ThirdParty/googletest EXCLUDE_FROM_ALL)
-
+add_subdirectory(RayTracinginOneWeekendInCuda)
