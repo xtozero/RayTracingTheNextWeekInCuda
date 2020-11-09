@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Hittable.h"
+#include "Material.h"
 
 class HittableList : public Hittable
 {

@@ -3,18 +3,28 @@
 #include "Hittable.h"
 #include "Random.h"
 #include "Ray.h"
+#include "Texture.h"
 #include "Vec3.h"
 
 class Material
 {
 public:
+	__device__ virtual ~Material( ) {}
+
 	__device__ virtual bool Scatter( curandState_t* randState, const Ray& inRay, const HitRecord& rec, Color& attenuation, Ray& scattered ) const = 0;
 };
 
 class Lambertian : public Material
 {
 public:
-	__device__ Lambertian( const Color& albedo ) : m_albedo( albedo ) {}
+	__device__ Lambertian( const Color& albedo ) : m_albedo( new SolidColor( albedo ) ) {}
+
+	__device__ Lambertian( Texture* albedo ) : m_albedo( albedo ) {}
+
+	__device__ ~Lambertian( )
+	{
+		delete m_albedo;
+	}
 
 	__device__ virtual bool Scatter( curandState_t* randState, const Ray& inRay, const HitRecord& rec, Color& attenuation, Ray& scattered ) const override
 	{
@@ -26,12 +36,12 @@ public:
 		}
 
 		scattered = Ray( rec.m_hitPosition, scatteredDir, inRay.Time( ) );
-		attenuation = m_albedo;
+		attenuation = m_albedo->Value( rec.m_u, rec.m_v, rec.m_hitPosition );
 		return true;
 	}
 
 private:
-	Color m_albedo;
+	Texture* m_albedo;
 };
 
 class Metal : public Material

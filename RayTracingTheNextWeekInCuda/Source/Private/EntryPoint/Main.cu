@@ -83,7 +83,7 @@ __global__ void CreateWorld( HittableList** world )
 	//( *world )->Add( new Sphere( Point3( -R, 0, -1 ), R, new Lambertian( Color( 0, 0, 1 ) ) ) );
 	//( *world )->Add( new Sphere( Point3( R, 0, -1 ), R, new Lambertian( Color( 1, 0, 0 ) ) ) );
 
-	( *world )->Add( new Sphere( Point3( 0, -1000, 0 ), 1000, new Lambertian( Color( 0.5, 0.5, 0.5 ) ) ) );
+	( *world )->Add( new Sphere( Point3( 0, -1000, 0 ), 1000, new Lambertian( new CheckerTexture( Color( 0.2, 0.3, 0.1 ), Color( 0.9, 0.9, 0.9 ) ) ) ) );
 
 	curandState_t randState;
 	curand_init( 1024, 768, 0, &randState );
@@ -122,6 +122,14 @@ __global__ void CreateWorld( HittableList** world )
 	( *world )->Add( new Sphere( Point3( 4, 1, 0 ), 1.0, new Metal( Color( 0.7, 0.6, 0.5 ), 0 ) ) );
 }
 
+__global__ void CreateTwoSpheresWorld( HittableList** world )
+{
+	*world = new HittableList( );
+
+	( *world )->Add( new Sphere( Point3( 0, -10, 0 ), 10, new Lambertian( new CheckerTexture( Color( 0.2, 0.3, 0.1 ), Color( 0.9, 0.9, 0.9 ) ) ) ) );
+	( *world )->Add( new Sphere( Point3( 0, 10, 0 ), 10, new Lambertian( new CheckerTexture( Color( 0.2, 0.3, 0.1 ), Color( 0.9, 0.9, 0.9 ) ) ) ) );
+}
+
 __global__ void DestroyWorld( HittableList** world )
 {
 	(*world)->Clear( );
@@ -130,11 +138,31 @@ __global__ void DestroyWorld( HittableList** world )
 
 int main( )
 {
-	// camera
-	constexpr double aspectRatio = 16.0 / 9.0;
 	Point3 lookFrom( 13, 2, 3 );
 	Point3 lookAt( 0, 0, 0 );
-	Camera cam( lookFrom, lookAt, 20, aspectRatio, 0.1, 10, 0.0, 1.0 );
+	double fov = 40.0;
+	double aperture = 0.0;
+
+	HittableList** world = nullptr;
+	cudaMalloc( (void**)&world, sizeof( HittableList* ) );
+
+	switch ( 0 )
+	{
+	case 1:
+		CreateWorld<<<1, 1>>>( world );
+		fov = 20.0;
+		aperture = 0.1;
+		break;
+	default:
+	case 2:
+		CreateTwoSpheresWorld<<<1, 1>>>( world );
+		fov = 20.0;
+		break;
+	}
+
+	// camera
+	constexpr double aspectRatio = 16.0 / 9.0;
+	Camera cam( lookFrom, lookAt, fov, aspectRatio, aperture, 10, 0.0, 1.0 );
 
 	// canvas
 	constexpr int canvasWidth = 400;
@@ -150,11 +178,6 @@ int main( )
 	cudaDeviceProp prop;
 	cudaGetDeviceProperties( &prop, curDevice );
 
-	HittableList** world = nullptr;
-	cudaMalloc( (void**)&world, sizeof( HittableList* ) );
-
-	CreateWorld<<<1, 1>>>( world );
-
 	dim3 grids( static_cast<unsigned int>( ( canvas.Width() + 7 ) / 8 ) , static_cast<unsigned int>( ( canvas.Height( ) + 7 ) / 8 ) );
 	dim3 threads( 8, 8 );
 	FillCanvas<<<grids, threads>>>( devPixels, world, canvas.Width(), canvas.Height(), cam, 100, 50 );
@@ -165,5 +188,5 @@ int main( )
 	cudaFree( devPixels );
 	cudaFree( world );
 
-	canvas.WriteFile( "./image1.ppm" );
+	canvas.WriteFile( "./image2_2.ppm" );
 }

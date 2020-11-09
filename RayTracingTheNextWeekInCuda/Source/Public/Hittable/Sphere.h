@@ -2,6 +2,8 @@
 
 #include "Hittable.h"
 
+#include <math_constants.h>
+
 class Sphere : public Hittable
 {
 public:
@@ -27,6 +29,7 @@ public:
 				rec.m_t = t;
 				rec.m_hitPosition = r.At( t );
 				Vec3 outwardNormal = ( rec.m_hitPosition - m_center ) / m_radius;
+				GetSphereUV( outwardNormal, rec.m_u, rec.m_v );
 				rec.SetFrontFaceNormal( r, outwardNormal );
 				rec.m_material = m_material;
 				return true;
@@ -38,6 +41,7 @@ public:
 				rec.m_t = t;
 				rec.m_hitPosition = r.At( t );
 				Vec3 outwardNormal = ( rec.m_hitPosition - m_center ) / m_radius;
+				GetSphereUV( outwardNormal, rec.m_u, rec.m_v );
 				rec.SetFrontFaceNormal( r, outwardNormal );
 				rec.m_material = m_material;
 				return true;
@@ -48,6 +52,15 @@ public:
 	}
 
 private:
+	__device__ static void GetSphereUV( const Point3& p, double& u, double& v )
+	{
+		auto theta = acos( -p.Y( ) );
+		auto phi = atan2( -p.Z( ), p.X( ) ) + CUDART_PI;
+
+		u = phi / ( 2 * CUDART_PI );
+		v = theta / CUDART_PI;
+	}
+
 	Point3 m_center;
 	double m_radius;
 };

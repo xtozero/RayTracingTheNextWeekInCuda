@@ -16,6 +16,7 @@ set (IMAGE
 
 set (MATERIAL
 	./Source/Public/Material/Material.h
+	./Source/Public/Material/Texture.h
 )
 
 set (MATH
