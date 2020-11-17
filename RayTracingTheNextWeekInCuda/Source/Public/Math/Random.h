@@ -15,6 +15,11 @@ __device__ double RandomDouble( curandState_t* randState, double min, double max
 	return min + ( max - min ) * RandomDouble( randState );
 }
 
+__device__ int RandomInt( curandState_t* randState, int min, int max )
+{
+	return static_cast<int>( RandomDouble( randState ), static_cast<double>( min ), static_cast<double>( max ) );
+}
+
 __device__ Vec3 Random( curandState_t* randState )
 {
 	return Vec3( RandomDouble( randState ), RandomDouble( randState ), RandomDouble( randState ) );

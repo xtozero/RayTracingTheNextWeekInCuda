@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Perlin.h"
 #include "Vec3.h"
 
 #include <cuda_runtime.h>
@@ -56,4 +57,18 @@ public:
 private:
 	Texture* m_odd = nullptr;
 	Texture* m_even = nullptr;
+};
+
+class NoiseTexture : public Texture
+{
+public:
+	__device__ NoiseTexture( Perlin* perlin ) : m_perlin( perlin ) {}
+
+	__device__ virtual Color Value( double u, double v, const Point3& p ) const override
+	{
+		return Color( 1, 1, 1 ) * m_perlin->Noise( p );
+	}
+
+private:
+	Perlin* m_perlin;
 };

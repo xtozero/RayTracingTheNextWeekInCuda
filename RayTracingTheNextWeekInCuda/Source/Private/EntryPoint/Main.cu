@@ -3,6 +3,7 @@
 #include "HittableList.h"
 #include "Material.h"
 #include "MovingSphere.h"
+#include "Perlin.h"
 #include "Random.h"
 #include "Ray.h"
 #include "Sphere.h"
@@ -130,6 +131,14 @@ __global__ void CreateTwoSpheresWorld( HittableList** world )
 	( *world )->Add( new Sphere( Point3( 0, 10, 0 ), 10, new Lambertian( new CheckerTexture( Color( 0.2, 0.3, 0.1 ), Color( 0.9, 0.9, 0.9 ) ) ) ) );
 }
 
+__global__ void CreatePerlinTextureWorld( HittableList** world, Perlin* perlin )
+{
+	*world = new HittableList( );
+
+	( *world )->Add( new Sphere( Point3( 0, -1000, 0 ), 1000, new Lambertian( new NoiseTexture( perlin ) ) ) );
+	( *world )->Add( new Sphere( Point3( 0, 2, 0 ), 2, new Lambertian( new NoiseTexture( perlin ) ) ) );
+}
+
 __global__ void DestroyWorld( HittableList** world )
 {
 	(*world)->Clear( );
@@ -143,6 +152,8 @@ int main( )
 	double fov = 40.0;
 	double aperture = 0.0;
 
+	Perlin* perlinTexture = nullptr;
+
 	HittableList** world = nullptr;
 	cudaMalloc( (void**)&world, sizeof( HittableList* ) );
 
@@ -153,9 +164,15 @@ int main( )
 		fov = 20.0;
 		aperture = 0.1;
 		break;
-	default:
 	case 2:
 		CreateTwoSpheresWorld<<<1, 1>>>( world );
+		fov = 20.0;
+		break;
+	default:
+	case 3:
+		cudaMalloc( &perlinTexture, sizeof( Perlin ) );
+		GeneratePerlinTexture<<<16, 16>>>( perlinTexture );
+		CreatePerlinTextureWorld<<<1, 1>>>( world, perlinTexture );
 		fov = 20.0;
 		break;
 	}
@@ -187,6 +204,7 @@ int main( )
 	cudaMemcpy( canvas.Pixels(), devPixels, canvas.Size( ), cudaMemcpyDeviceToHost );
 	cudaFree( devPixels );
 	cudaFree( world );
+	cudaFree( perlinTexture );
 
-	canvas.WriteFile( "./image2_2.ppm" );
+	canvas.WriteFile( "./image3_1.ppm" );
 }
