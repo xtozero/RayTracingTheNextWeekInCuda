@@ -63,12 +63,14 @@ class NoiseTexture : public Texture
 {
 public:
 	__device__ NoiseTexture( Perlin* perlin ) : m_perlin( perlin ) {}
+	__device__ NoiseTexture( Perlin* perlin, double scale ) : m_perlin( perlin ), m_scale( scale ) {}
 
 	__device__ virtual Color Value( double u, double v, const Point3& p ) const override
 	{
-		return Color( 1, 1, 1 ) * m_perlin->Noise( p );
+		return Color( 1, 1, 1 ) * 0.5 * ( 1 + sin( m_scale * p.Z( ) + 10 * m_perlin->Turb( p ) ) );
 	}
 
 private:
 	Perlin* m_perlin;
+	double m_scale = 1;
 };

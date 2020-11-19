@@ -135,8 +135,8 @@ __global__ void CreatePerlinTextureWorld( HittableList** world, Perlin* perlin )
 {
 	*world = new HittableList( );
 
-	( *world )->Add( new Sphere( Point3( 0, -1000, 0 ), 1000, new Lambertian( new NoiseTexture( perlin ) ) ) );
-	( *world )->Add( new Sphere( Point3( 0, 2, 0 ), 2, new Lambertian( new NoiseTexture( perlin ) ) ) );
+	( *world )->Add( new Sphere( Point3( 0, -1000, 0 ), 1000, new Lambertian( new NoiseTexture( perlin, 4 ) ) ) );
+	( *world )->Add( new Sphere( Point3( 0, 2, 0 ), 2, new Lambertian( new NoiseTexture( perlin, 4 ) ) ) );
 }
 
 __global__ void DestroyWorld( HittableList** world )
@@ -206,5 +206,5 @@ int main( )
 	cudaFree( world );
 	cudaFree( perlinTexture );
 
-	canvas.WriteFile( "./image3_1.ppm" );
+	canvas.WriteFile( "./image3_7.ppm" );
 }
