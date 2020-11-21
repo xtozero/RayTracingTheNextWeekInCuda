@@ -12,6 +12,9 @@
 #include <cuda_runtime.h>
 #include <curand_kernel.h>
 
+#define STB_IMAGE_IMPLEMENTATION
+#include <stb_image.h>
+
 __device__ Color RayColor( curandState_t* randState, const Ray& r, HittableList** world, int depth )
 {
 	HitRecord rec;
@@ -139,6 +142,14 @@ __global__ void CreatePerlinTextureWorld( HittableList** world, Perlin* perlin )
 	( *world )->Add( new Sphere( Point3( 0, 2, 0 ), 2, new Lambertian( new NoiseTexture( perlin, 4 ) ) ) );
 }
 
+texture<uchar4, 2> g_earth;
+__global__ void CreateEarthWorld( HittableList** world, int width, int height )
+{
+	*world = new HittableList( );
+
+	( *world )->Add( new Sphere( Point3( 0, 0, 0 ), 2, new Lambertian( new ImageTexture( g_earth, width, height ) ) ) );
+}
+
 __global__ void DestroyWorld( HittableList** world )
 {
 	(*world)->Clear( );
@@ -157,6 +168,8 @@ int main( )
 	HittableList** world = nullptr;
 	cudaMalloc( (void**)&world, sizeof( HittableList* ) );
 
+	float3* deviceEarth = nullptr;
+
 	switch ( 0 )
 	{
 	case 1:
@@ -168,11 +181,29 @@ int main( )
 		CreateTwoSpheresWorld<<<1, 1>>>( world );
 		fov = 20.0;
 		break;
-	default:
 	case 3:
 		cudaMalloc( &perlinTexture, sizeof( Perlin ) );
 		GeneratePerlinTexture<<<16, 16>>>( perlinTexture );
 		CreatePerlinTextureWorld<<<1, 1>>>( world, perlinTexture );
+		fov = 20.0;
+		break;
+	default:
+	case 4:
+		int width = 0;
+		int height = 0;
+		int componentPerPixel = 4;
+
+		unsigned char* data = stbi_load( "earthmap.jpg", &width, &height, &componentPerPixel, componentPerPixel );
+
+		cudaMalloc( (void**)&deviceEarth, sizeof( uchar4 ) * width * height );
+		cudaMemcpy( deviceEarth, data, sizeof( uchar4 ) * width * height, cudaMemcpyHostToDevice );
+
+		delete[] data;
+
+		cudaChannelFormatDesc desc = cudaCreateChannelDesc<uchar4>( );
+		cudaError_t error = cudaBindTexture2D( nullptr, &g_earth, deviceEarth, &desc, width, height, sizeof( uchar4 ) * width );
+
+		CreateEarthWorld<<<1, 1>>>( world, width, height );
 		fov = 20.0;
 		break;
 	}
@@ -205,6 +236,9 @@ int main( )
 	cudaFree( devPixels );
 	cudaFree( world );
 	cudaFree( perlinTexture );
+	cudaFree( deviceEarth );
 
-	canvas.WriteFile( "./image3_7.ppm" );
+	cudaUnbindTexture( &g_earth );
+
+	canvas.WriteFile( "./image4.ppm" );
 }

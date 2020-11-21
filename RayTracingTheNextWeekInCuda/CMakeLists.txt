@@ -39,6 +39,7 @@ add_executable(RayTracinginOneWeekendInCuda ${ENTRY_POINT}
 
 target_include_directories(RayTracinginOneWeekendInCuda
 	PRIVATE
+		../ThirdParty/stb
 		Source/Public/Hittable
 		Source/Public/Image
 		Source/Public/Material

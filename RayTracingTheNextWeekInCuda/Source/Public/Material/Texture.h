@@ -74,3 +74,22 @@ private:
 	Perlin* m_perlin;
 	double m_scale = 1;
 };
+
+class ImageTexture : public Texture
+{
+public:
+	__device__ ImageTexture( texture<uchar4, 2> image, int width, int height ) : m_image( image ), m_width( width ), m_height( height ) {}
+
+	__device__ virtual Color Value( double u, double v, const Point3& p ) const override
+	{
+		uchar4 c = tex2D( m_image, static_cast<float>( u * m_width ), static_cast<float>( ( 1.0 - v ) * m_height ) );
+
+		constexpr double denominator = ( 1.0 / 255.0 );
+		return Color( c.x * denominator, c.y * denominator, c.z * denominator );
+	}
+
+private:
+	texture<uchar4, 2> m_image;
+	int m_width;
+	int m_height;
+};
