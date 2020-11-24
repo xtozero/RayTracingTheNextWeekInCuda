@@ -7,6 +7,7 @@ set (HITTABLE
 	./Source/Public/Hittable/HittableList.h
 	./Source/Public/Hittable/MovingSphere.h
 	./Source/Public/Hittable/Sphere.h
+	./Source/Public/Hittable/AARect.h
 )
 
 set (IMAGE

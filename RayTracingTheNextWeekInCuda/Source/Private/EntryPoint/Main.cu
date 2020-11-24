@@ -1,3 +1,4 @@
+#include "AARect.h"
 #include "Camera.h"
 #include "Canvas.h"
 #include "HittableList.h"
@@ -15,7 +16,7 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
 
-__device__ Color RayColor( curandState_t* randState, const Ray& r, HittableList** world, int depth )
+__device__ Color RayColor( curandState_t* randState, const Ray& r, HittableList** world, Color background, int depth )
 {
 	HitRecord rec;
 	Color totalAttenuation( 1.0, 1.0, 1.0 );
@@ -26,31 +27,29 @@ __device__ Color RayColor( curandState_t* randState, const Ray& r, HittableList*
 		if ( ( *world )->Hit( curRay, 0.001, DBL_MAX, rec ) )
 		{
 			Color attenuation( 1.0, 1.0, 1.0 );
+			Color emitted = rec.m_material->Emitted( rec.m_u, rec.m_v, rec.m_hitPosition );
 			Ray scattered;
 
 			if ( rec.m_material->Scatter( randState, curRay, rec, attenuation, scattered ) )
 			{
-				totalAttenuation = totalAttenuation * attenuation;
+				totalAttenuation = totalAttenuation * attenuation + emitted;
 				curRay = scattered;
 			}
 			else
 			{
-				return Color( 0, 0, 0 );
+				return totalAttenuation * emitted;
 			}
 		}
 		else
 		{
-			Vec3 unitDirection = Normalize( curRay.Direction( ) );
-			double t = 0.5 * ( unitDirection.Y( ) + 1 );
-			Color c = ( 1 - t ) * Color( 1, 1, 1 ) + t * Color( 0.5, 0.7, 1 );
-			return totalAttenuation * c;
+			return background;
 		}
 	}
 
 	return Color( 0, 0, 0 );
 }
 
-__global__ void FillCanvas( Pixel* devPixels, HittableList** world, std::size_t width, std::size_t height, Camera cam, int numSample, int maxRayDepth )
+__global__ void FillCanvas( Pixel* devPixels, HittableList** world, std::size_t width, std::size_t height, Color background, Camera cam, int numSample, int maxRayDepth )
 {
 	int x = threadIdx.x + blockIdx.x * blockDim.x;
 	int y = threadIdx.y + blockIdx.y * blockDim.y;
@@ -67,7 +66,7 @@ __global__ void FillCanvas( Pixel* devPixels, HittableList** world, std::size_t 
 			double u = double( x + RandomDouble( &randState ) ) / ( width - 1 );
 			double v = double( y + RandomDouble( &randState ) ) / ( height - 1 );
 			Ray r = cam.GetRay( &randState, u, v );
-			pixelColor += RayColor( &randState, r, world, maxRayDepth );
+			pixelColor += RayColor( &randState, r, world, background, maxRayDepth );
 		}
 		
 		WriteColor( devPixels[offset].m_color, pixelColor, numSample );
@@ -150,6 +149,17 @@ __global__ void CreateEarthWorld( HittableList** world, int width, int height )
 	( *world )->Add( new Sphere( Point3( 0, 0, 0 ), 2, new Lambertian( new ImageTexture( g_earth, width, height ) ) ) );
 }
 
+__global__ void CreateSimpleLightWorld( HittableList** world, Perlin* perlin )
+{
+	*world = new HittableList( );
+
+	( *world )->Add( new Sphere( Point3( 0, -1000, 0 ), 1000, new Lambertian( new NoiseTexture( perlin, 4 ) ) ) );
+	( *world )->Add( new Sphere( Point3( 0, 2, 0 ), 2, new Lambertian( new NoiseTexture( perlin, 4 ) ) ) );
+
+	( *world )->Add( new XYRect( 3, 5, 1, 3, -2, new DiffuseLight( Color( 4, 4, 4 ) ) ) );
+	( *world )->Add( new Sphere( Point3( 0, 7, 0 ), 2, new DiffuseLight( Color( 4, 4, 4 ) ) ) );
+}
+
 __global__ void DestroyWorld( HittableList** world )
 {
 	(*world)->Clear( );
@@ -162,6 +172,8 @@ int main( )
 	Point3 lookAt( 0, 0, 0 );
 	double fov = 40.0;
 	double aperture = 0.0;
+	int SamplesPerPixel = 100;
+	Color background( 0.7, 0.8, 1.0 );
 
 	Perlin* perlinTexture = nullptr;
 
@@ -187,23 +199,35 @@ int main( )
 		CreatePerlinTextureWorld<<<1, 1>>>( world, perlinTexture );
 		fov = 20.0;
 		break;
-	default:
 	case 4:
-		int width = 0;
-		int height = 0;
-		int componentPerPixel = 4;
+		{
+			int width = 0;
+			int height = 0;
+			int componentPerPixel = 4;
 
-		unsigned char* data = stbi_load( "earthmap.jpg", &width, &height, &componentPerPixel, componentPerPixel );
+			unsigned char* data = stbi_load( "earthmap.jpg", &width, &height, &componentPerPixel, componentPerPixel );
 
-		cudaMalloc( (void**)&deviceEarth, sizeof( uchar4 ) * width * height );
-		cudaMemcpy( deviceEarth, data, sizeof( uchar4 ) * width * height, cudaMemcpyHostToDevice );
+			cudaMalloc( (void**)&deviceEarth, sizeof( uchar4 ) * width * height );
+			cudaMemcpy( deviceEarth, data, sizeof( uchar4 ) * width * height, cudaMemcpyHostToDevice );
 
-		delete[] data;
+			delete[] data;
 
-		cudaChannelFormatDesc desc = cudaCreateChannelDesc<uchar4>( );
-		cudaError_t error = cudaBindTexture2D( nullptr, &g_earth, deviceEarth, &desc, width, height, sizeof( uchar4 ) * width );
+			cudaChannelFormatDesc desc = cudaCreateChannelDesc<uchar4>( );
+			cudaBindTexture2D( nullptr, &g_earth, deviceEarth, &desc, width, height, sizeof( uchar4 ) * width );
 
-		CreateEarthWorld<<<1, 1>>>( world, width, height );
+			CreateEarthWorld<<<1, 1>>>( world, width, height );
+			fov = 20.0;
+		}
+		break;
+	case 5:
+	default:
+		cudaMalloc( &perlinTexture, sizeof( Perlin ) );
+		GeneratePerlinTexture<<<16, 16>>>( perlinTexture );
+		CreateSimpleLightWorld<<<1, 1>>>( world, perlinTexture );
+		SamplesPerPixel = 400;
+		background = Color( 0, 0, 0 );
+		lookFrom = Point3( 26, 3, 6 );
+		lookAt = Point3( 0, 2, 0 );
 		fov = 20.0;
 		break;
 	}
@@ -228,7 +252,7 @@ int main( )
 
 	dim3 grids( static_cast<unsigned int>( ( canvas.Width() + 7 ) / 8 ) , static_cast<unsigned int>( ( canvas.Height( ) + 7 ) / 8 ) );
 	dim3 threads( 8, 8 );
-	FillCanvas<<<grids, threads>>>( devPixels, world, canvas.Width(), canvas.Height(), cam, 100, 50 );
+	FillCanvas<<<grids, threads>>>( devPixels, world, canvas.Width(), canvas.Height(), background, cam, SamplesPerPixel, 50 );
 
 	DestroyWorld<<<1, 1>>>( world );
 
@@ -240,5 +264,5 @@ int main( )
 
 	cudaUnbindTexture( &g_earth );
 
-	canvas.WriteFile( "./image4.ppm" );
+	canvas.WriteFile( "./image5_2.ppm" );
 }

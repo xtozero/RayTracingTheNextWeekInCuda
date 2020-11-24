@@ -12,6 +12,11 @@ public:
 	__device__ virtual ~Material( ) {}
 
 	__device__ virtual bool Scatter( curandState_t* randState, const Ray& inRay, const HitRecord& rec, Color& attenuation, Ray& scattered ) const = 0;
+
+	__device__ virtual Color Emitted( double u, double v, const Point3& p )
+	{
+		return Color( 0, 0, 0 );
+	}
 };
 
 class Lambertian : public Material
@@ -101,4 +106,28 @@ private:
 	}
 
 	double m_ir;
+};
+
+class DiffuseLight : public Material
+{
+public:
+	__device__ DiffuseLight( Texture* emit ) : m_emit( emit ) {}
+	__device__ DiffuseLight( Color c ) : m_emit( new SolidColor( c ) ) {}
+	__device__ ~DiffuseLight( )
+	{
+		delete m_emit;
+	}
+
+	__device__ virtual bool Scatter( curandState_t* randState, const Ray& inRay, const HitRecord& rec, Color& attenuation, Ray& scattered ) const override
+	{
+		return false;
+	}
+
+	__device__ virtual Color Emitted( double u, double v, const Point3& p ) override
+	{
+		return m_emit->Value( u, v, p );
+	}
+
+private:
+	Texture* m_emit;
 };
