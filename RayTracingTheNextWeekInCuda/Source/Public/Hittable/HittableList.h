@@ -44,6 +44,7 @@ public:
 		for ( std::size_t i = 0; i < m_size; ++i )
 		{
 			newObjects[i] = m_objects[i];
+			m_objects[i] = nullptr;
 		}
 
 		delete[] m_objects;

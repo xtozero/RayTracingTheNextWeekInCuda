@@ -160,6 +160,18 @@ __global__ void CreateSimpleLightWorld( HittableList** world, Perlin* perlin )
 	( *world )->Add( new Sphere( Point3( 0, 7, 0 ), 2, new DiffuseLight( Color( 4, 4, 4 ) ) ) );
 }
 
+__global__ void CreateCornellBoxWorld( HittableList** world )
+{
+	*world = new HittableList( );
+
+	( *world )->Add( new YZRect( 0, 555, 0, 555, 555, new Lambertian( Color( 0.12, 0.45, 0.15 ) ) ) );
+	( *world )->Add( new YZRect( 0, 555, 0, 555, 0, new Lambertian( Color( 0.65, 0.05, 0.05 ) ) ) );
+	( *world )->Add( new XZRect( 213, 343, 227, 332, 554, new DiffuseLight( Color( 15, 15, 15 ) ) ) );
+	( *world )->Add( new XZRect( 0, 555, 0, 555, 0, new Lambertian( Color( 0.73, 0.73, 0.73 ) ) ) );
+	( *world )->Add( new XZRect( 0, 555, 0, 555, 555, new Lambertian( Color( 0.73, 0.73, 0.73 ) ) ) );
+	( *world )->Add( new XYRect( 0, 555, 0, 555, 555, new Lambertian( Color( 0.73, 0.73, 0.73 ) ) ) );
+}
+
 __global__ void DestroyWorld( HittableList** world )
 {
 	(*world)->Clear( );
@@ -172,8 +184,10 @@ int main( )
 	Point3 lookAt( 0, 0, 0 );
 	double fov = 40.0;
 	double aperture = 0.0;
-	int SamplesPerPixel = 100;
+	int samplesPerPixel = 100;
 	Color background( 0.7, 0.8, 1.0 );
+	double aspectRatio = 16.0 / 9.0;
+	int canvasWidth = 400;
 
 	Perlin* perlinTexture = nullptr;
 
@@ -220,24 +234,32 @@ int main( )
 		}
 		break;
 	case 5:
-	default:
 		cudaMalloc( &perlinTexture, sizeof( Perlin ) );
 		GeneratePerlinTexture<<<16, 16>>>( perlinTexture );
 		CreateSimpleLightWorld<<<1, 1>>>( world, perlinTexture );
-		SamplesPerPixel = 400;
+		samplesPerPixel = 400;
 		background = Color( 0, 0, 0 );
 		lookFrom = Point3( 26, 3, 6 );
 		lookAt = Point3( 0, 2, 0 );
 		fov = 20.0;
 		break;
+	case 6:
+	default:
+		CreateCornellBoxWorld<<<1, 1>>>( world );
+		aspectRatio = 1;
+		canvasWidth = 600;
+		samplesPerPixel = 200;
+		background = Color( 0, 0, 0 );
+		lookFrom = Point3( 278, 278, -800 );
+		lookAt = Point3( 278, 278, 0 );
+		fov = 40.0;
+		break;
 	}
 
 	// camera
-	constexpr double aspectRatio = 16.0 / 9.0;
 	Camera cam( lookFrom, lookAt, fov, aspectRatio, aperture, 10, 0.0, 1.0 );
 
 	// canvas
-	constexpr int canvasWidth = 400;
 	const int canvasHeight = static_cast<int>( canvasWidth / aspectRatio );
 	Canvas canvas( canvasWidth, canvasHeight );
 
@@ -252,7 +274,7 @@ int main( )
 
 	dim3 grids( static_cast<unsigned int>( ( canvas.Width() + 7 ) / 8 ) , static_cast<unsigned int>( ( canvas.Height( ) + 7 ) / 8 ) );
 	dim3 threads( 8, 8 );
-	FillCanvas<<<grids, threads>>>( devPixels, world, canvas.Width(), canvas.Height(), background, cam, SamplesPerPixel, 50 );
+	FillCanvas<<<grids, threads>>>( devPixels, world, canvas.Width(), canvas.Height(), background, cam, samplesPerPixel, 50 );
 
 	DestroyWorld<<<1, 1>>>( world );
 
@@ -264,5 +286,5 @@ int main( )
 
 	cudaUnbindTexture( &g_earth );
 
-	canvas.WriteFile( "./image5_2.ppm" );
+	canvas.WriteFile( "./image5_3.ppm" );
 }
