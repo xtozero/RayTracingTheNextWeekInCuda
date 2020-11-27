@@ -1,7 +1,9 @@
 #include "AARect.h"
+#include "Box.h"
 #include "Camera.h"
 #include "Canvas.h"
 #include "HittableList.h"
+#include "Instance.h"
 #include "Material.h"
 #include "MovingSphere.h"
 #include "Perlin.h"
@@ -170,6 +172,16 @@ __global__ void CreateCornellBoxWorld( HittableList** world )
 	( *world )->Add( new XZRect( 0, 555, 0, 555, 0, new Lambertian( Color( 0.73, 0.73, 0.73 ) ) ) );
 	( *world )->Add( new XZRect( 0, 555, 0, 555, 555, new Lambertian( Color( 0.73, 0.73, 0.73 ) ) ) );
 	( *world )->Add( new XYRect( 0, 555, 0, 555, 555, new Lambertian( Color( 0.73, 0.73, 0.73 ) ) ) );
+
+	Hittable* box1 = new Box( Point3( 0, 0, 0 ), Point3( 165, 330, 165 ), new Lambertian( Color( 0.73, 0.73, 0.73 ) ) );
+	box1 = new RotateY( box1, 15 );
+	box1 = new Translate( box1, Vec3( 265, 0, 295 ) );
+	( *world )->Add( box1 );
+
+	Hittable* box2 = new Box( Point3( 0, 0, 0 ), Point3( 165, 165, 165 ), new Lambertian( Color( 0.73, 0.73, 0.73 ) ) );
+	box2 = new RotateY( box2, -18 );
+	box2 = new Translate( box2, Vec3( 130, 0, 65 ) );
+	( *world )->Add( box2 );
 }
 
 __global__ void DestroyWorld( HittableList** world )
@@ -286,5 +298,5 @@ int main( )
 
 	cudaUnbindTexture( &g_earth );
 
-	canvas.WriteFile( "./image5_3.ppm" );
+	canvas.WriteFile( "./image6_2.ppm" );
 }

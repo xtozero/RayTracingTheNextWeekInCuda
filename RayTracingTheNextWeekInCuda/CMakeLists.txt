@@ -3,11 +3,13 @@ set (ENTRY_POINT
 )
 
 set (HITTABLE
+	./Source/Public/Hittable/AARect.h
+	./Source/Public/Hittable/Box.h
 	./Source/Public/Hittable/Hittable.h
 	./Source/Public/Hittable/HittableList.h
+	./Source/Public/Hittable/Instance.h
 	./Source/Public/Hittable/MovingSphere.h
 	./Source/Public/Hittable/Sphere.h
-	./Source/Public/Hittable/AARect.h
 )
 
 set (IMAGE
